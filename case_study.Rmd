@@ -1,0 +1,82 @@
+---
+title: "Case Study"
+author: "Sneha Mehta"
+date: "2022-10-11"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(p8105.datasets)
+data("nyc_airbnb")
+```
+
+```{r}
+# view dataset
+str(nyc_airbnb)
+nyc_airbnb %>% count(room_type)
+nyc_airbnb %>% count(neighbourhood_group)
+nyc_airbnb = nyc_airbnb %>% 
+  rename(borough = neighbourhood_group) %>% 
+  mutate(stars = review_scores_location / 2)
+```
+
+## Brainstorm questions
+
+* what variables are relevant to higher review / scores?
+* what are the popular places to rent an airbnb?
+* what portion of hosts / locations are private rooms vs entire apartments?
+* what makes an airbnb more expensive?
+
+
+```{r}
+most_popular = nyc_airbnb %>% 
+  group_by(neighbourhood, borough) %>% 
+  distinct() %>% 
+  summarise(n_obs = n()) %>% 
+  ungroup() %>% 
+  group_by(borough) %>% 
+  mutate(rank = min_rank(desc(n_obs))) %>% 
+  filter(rank < 5) %>% 
+  arrange(borough, n_obs)
+most_popular
+```
+
+
+Let's look at price
+```{r}
+nyc_airbnb %>% 
+  group_by(borough, room_type) %>% 
+  summarize(mean_price = mean(price, na.rm = TRUE)) %>% 
+  pivot_wider(names_from = room_type, values_from = mean_price)
+
+# Price Distribution
+nyc_airbnb %>% 
+  filter(borough == "Manhattan", room_type == "Entire home/apt", price > 1000) %>% 
+  ggplot(aes(x = price)) + geom_histogram() + facet_grid(. ~ room_type)
+```
+## Price vs Rating
+```{r}
+nyc_airbnb %>% 
+  filter(borough == "Manhattan") %>% 
+  ggplot(aes(x = stars, y = price)) + 
+  geom_point() +
+  facet_grid(. ~ room_type)
+```
+```{r}
+nyc_airbnb %>% 
+  filter(borough == "Manhattan", room_type == "Entire home/apt") %>% 
+  filter(price <= 1000) %>% 
+  mutate(neighbourhood = fct_reorder(neighbourhood, price)) %>% 
+  ggplot(aes(x = neighbourhood, y = price)) + geom_boxplot() + coord_flip()
+
+```
+## Price vs Location
+```{r}
+nyc_airbnb %>% 
+  filter(borough == "Manhattan", room_type == "Entire home/apt") %>% 
+  filter(price <= 1000) %>% 
+  sample_n(2000) %>% 
+  ggplot(aes(x = lat, y = long, color = price)) + geom_point(alpha = 0.5)
+```
+
